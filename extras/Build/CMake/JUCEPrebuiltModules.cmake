@@ -15,7 +15,9 @@
 # if the consumer defines any of these options differently.
 #
 # The libraries are installed into lib/<CONFIG> and exported as juce::<module> into
-# JUCEPrebuiltTargets.cmake. Only headers and the generated check file are installed for them.
+# JUCEPrebuiltTargets.cmake. Only headers and the generated check file are installed for them, plus
+# the few sources (_juce_prebuilt_consumer_sources_<module>) which depend on consumer project
+# specific defines, and so are compiled in the consumer projects.
 # ==================================================================================================
 
 # The options are only offered when configuring JUCE itself, not in projects consuming the package.
@@ -38,8 +40,26 @@ if(PROJECT_NAME STREQUAL "JUCE")
     endif()
 endif()
 
-# Library build-time options which are not tagged `Config:` in the module header
+# Library build-time options which are not tagged `Config:` in the module header. An option used by
+# several modules belongs to the lowest one, the others see it through their dependency.
+set(_juce_prebuilt_extra_options_juce_events JUCE_PUSH_NOTIFICATIONS)
+set(_juce_prebuilt_extra_options_juce_gui_basics JUCE_CONTENT_SHARING)
+set(_juce_prebuilt_extra_options_juce_gui_extra JUCE_PUSH_NOTIFICATIONS_FIREBASE)
 set(_juce_prebuilt_extra_options_juce_product_unlocking JUCE_IN_APP_PURCHASES)
+
+# Options which aren't macros themselves: when enabled, they define the listed macros, otherwise
+# the macros stay undefined (the sources test them with `defined`). The values are the ones the
+# Projucer uses; the sources only check whether the macros are defined.
+set(_juce_prebuilt_option_defines_JUCE_PUSH_NOTIFICATIONS_FIREBASE
+    JUCE_FIREBASE_INSTANCE_ID_SERVICE_CLASSNAME=com_rmsl_juce_JuceFirebaseInstanceIdService
+    JUCE_FIREBASE_MESSAGING_SERVICE_CLASSNAME=com_rmsl_juce_JuceFirebaseMessagingService)
+
+# Module sources (relative to the module folder) which depend on consumer project specific defines.
+# They are compiled in the consumer projects, not in the library.
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    # Depends on JUCE_PUSH_NOTIFICATIONS_ACTIVITY, the app's activity class
+    set(_juce_prebuilt_consumer_sources_juce_gui_basics native/juce_PushNotificationsActivity_android.cpp)
+endif()
 
 # Defaults which differ from the module header's: the JUCE CMake API disables these unless a target
 # asks for them with NEEDS_CURL, NEEDS_WEB_BROWSER or NEEDS_OPENGL_ES.
@@ -129,12 +149,31 @@ function(_juce_finalise_prebuilt_module target module_header base_path install_p
                 set(value 0)
             endif()
 
-            target_compile_definitions(${target} INTERFACE "${option_name}=${value}")
+            if(NOT DEFINED _juce_prebuilt_option_defines_${option_name})
+                target_compile_definitions(${target} INTERFACE "${option_name}=${value}")
+            endif()
         endif()
 
         set(prebuilt_value_${option_name} "${value}")
 
-        if("${value}" STREQUAL "")
+        if(DEFINED _juce_prebuilt_option_defines_${option_name})
+            foreach(define IN LISTS _juce_prebuilt_option_defines_${option_name})
+                string(REGEX REPLACE "=.*" "" macro "${define}")
+
+                if("${value}" STREQUAL "1")
+                    target_compile_definitions(${target} INTERFACE "${define}")
+                    string(APPEND check_source
+                        "#ifndef ${macro}\n"
+                        " #error \"The prebuilt ${target} library was built with ${option_name}=1, which defines ${macro}.\"\n"
+                        "#endif\n\n")
+                else()
+                    string(APPEND check_source
+                        "#ifdef ${macro}\n"
+                        " #error \"${macro} is defined, but the prebuilt ${target} library was built without ${option_name}. Set it when building JUCE instead: -D${option_name}=1\"\n"
+                        "#endif\n\n")
+                endif()
+            endforeach()
+        elseif("${value}" STREQUAL "")
             string(APPEND check_source
                 "#ifdef ${option_name}\n"
                 " #error \"${option_name} is defined, but the prebuilt ${target} library uses the module's default. Set it when building JUCE instead: -D${option_name}=...\"\n"
@@ -207,6 +246,18 @@ function(_juce_finalise_prebuilt_module target module_header base_path install_p
         install(DIRECTORY "${module_path}" DESTINATION "${install_path}" ${_juce_prebuilt_source_patterns})
         install(FILES "${check_file}" DESTINATION "${install_path}/${target}")
     endif()
+
+    # Sources compiled in the consumer projects
+    foreach(source IN LISTS _juce_prebuilt_consumer_sources_${target})
+        target_sources(${target} INTERFACE "$<BUILD_INTERFACE:${module_path}/${source}>")
+
+        if(install_path)
+            get_filename_component(source_dir "${source}" DIRECTORY)
+            target_sources(${target} INTERFACE
+                "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${install_path}/${target}/${source}>")
+            install(FILES "${module_path}/${source}" DESTINATION "${install_path}/${target}/${source_dir}")
+        endif()
+    endforeach()
 
     set_property(GLOBAL APPEND PROPERTY _juce_prebuilt_module_targets ${target})
 endfunction()

@@ -3190,27 +3190,9 @@ const int KeyPress::stopKey                 = extendedKeyModifier + 70;
 const int KeyPress::fastForwardKey          = extendedKeyModifier + 71;
 const int KeyPress::rewindKey               = extendedKeyModifier + 72;
 
-//==============================================================================
-#ifdef JUCE_PUSH_NOTIFICATIONS_ACTIVITY
- struct JuceActivityNewIntentListener
- {
-     #define JNI_CLASS_MEMBERS(METHOD, STATICMETHOD, FIELD, STATICFIELD, CALLBACK) \
-      CALLBACK (appNewIntent, "appNewIntent", "(Landroid/content/Intent;)V") \
-      CALLBACK (appOnResume,  "appOnResume",  "()V")
-
-      DECLARE_JNI_CLASS (JavaActivity, JUCE_PUSH_NOTIFICATIONS_ACTIVITY)
-     #undef JNI_CLASS_MEMBERS
-
-     static void JNICALL appNewIntent (JNIEnv*, jobject /*activity*/, jobject intentData)
-     {
-         juce_handleNotificationIntent (static_cast<void*> (intentData));
-     }
-
-     static void JNICALL appOnResume (JNIEnv*, jobject)
-     {
-         juce_handleOnResume();
-     }
- };
-#endif
-
 } // namespace juce
+
+// Compiled in the consumer project when juce_gui_basics is prebuilt, see JUCEPrebuiltModules.cmake
+#define JUCE_INTERNAL_PUSH_NOTIFICATIONS_ACTIVITY_IN_MODULE 1
+#include "juce_PushNotificationsActivity_android.cpp"
+#undef JUCE_INTERNAL_PUSH_NOTIFICATIONS_ACTIVITY_IN_MODULE
