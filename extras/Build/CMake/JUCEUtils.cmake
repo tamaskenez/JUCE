@@ -265,21 +265,31 @@ function(_juce_link_optional_libraries target)
         get_target_property(needs_browser ${target} JUCE_NEEDS_WEB_BROWSER)
         get_target_property(needs_opengl_es ${target} JUCE_NEEDS_OPENGL_ES)
 
-        target_compile_definitions(${target} PRIVATE
-            JUCE_USE_CURL=$<BOOL:${needs_curl}>
-            JUCE_WEB_BROWSER=$<BOOL:${needs_browser}>
-            JUCE_OPENGL_ES=$<BOOL:${needs_opengl_es}>)
+        # Prebuilt modules set these when building JUCE, see JUCEPrebuiltModules.cmake
+        if(NOT juce_core IN_LIST JUCE_PREBUILT_MODULES)
+            target_compile_definitions(${target} PRIVATE JUCE_USE_CURL=$<BOOL:${needs_curl}>)
+        endif()
 
-        if(needs_curl)
+        if(NOT juce_gui_extra IN_LIST JUCE_PREBUILT_MODULES)
+            target_compile_definitions(${target} PRIVATE JUCE_WEB_BROWSER=$<BOOL:${needs_browser}>)
+        endif()
+
+        if(NOT juce_opengl IN_LIST JUCE_PREBUILT_MODULES)
+            target_compile_definitions(${target} PRIVATE JUCE_OPENGL_ES=$<BOOL:${needs_opengl_es}>)
+        endif()
+
+        if(needs_curl AND NOT juce_core IN_LIST JUCE_PREBUILT_MODULES)
             target_link_libraries(${target} PRIVATE juce::pkgconfig_JUCE_CURL_LINUX_DEPS)
         endif()
 
-        if(needs_opengl_es)
+        if(needs_opengl_es AND NOT juce_opengl IN_LIST JUCE_PREBUILT_MODULES)
             target_link_libraries(${target} PRIVATE juce::pkgconfig_JUCE_GLES_LINUX_DEPS)
         endif()
 
         if(needs_browser)
-            target_link_libraries(${target} PRIVATE juce::pkgconfig_JUCE_BROWSER_LINUX_DEPS)
+            if(NOT juce_gui_extra IN_LIST JUCE_PREBUILT_MODULES)
+                target_link_libraries(${target} PRIVATE juce::pkgconfig_JUCE_BROWSER_LINUX_DEPS)
+            endif()
 
             get_target_property(is_plugin ${target} JUCE_IS_PLUGIN)
 
@@ -290,10 +300,12 @@ function(_juce_link_optional_libraries target)
     elseif(APPLE)
         get_target_property(needs_storekit ${target} JUCE_NEEDS_STORE_KIT)
 
-        target_compile_definitions(${target} PRIVATE
-            JUCE_IN_APP_PURCHASES=$<BOOL:${needs_storekit}>)
+        if(NOT juce_product_unlocking IN_LIST JUCE_PREBUILT_MODULES)
+            target_compile_definitions(${target} PRIVATE
+                JUCE_IN_APP_PURCHASES=$<BOOL:${needs_storekit}>)
+        endif()
 
-        if(needs_storekit)
+        if(needs_storekit AND NOT juce_product_unlocking IN_LIST JUCE_PREBUILT_MODULES)
             _juce_link_frameworks("${target}" PRIVATE StoreKit)
         endif()
 

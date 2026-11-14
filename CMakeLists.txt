@@ -178,6 +178,7 @@ install(FILES "${JUCE_BINARY_DIR}/JUCEConfigVersion.cmake"
               "${JUCE_CMAKE_UTILS_DIR}/JUCECheckAtomic.cmake"
               "${JUCE_CMAKE_UTILS_DIR}/JUCEHelperTargets.cmake"
               "${JUCE_CMAKE_UTILS_DIR}/JUCEModuleSupport.cmake"
+              "${JUCE_CMAKE_UTILS_DIR}/JUCEPrebuiltModules.cmake"
               "${JUCE_CMAKE_UTILS_DIR}/JUCEUtils.cmake"
               "${JUCE_CMAKE_UTILS_DIR}/JuceLV2Defines.h.in"
               "${JUCE_CMAKE_UTILS_DIR}/LaunchScreen.storyboard"
@@ -196,6 +197,8 @@ install(FILES "${JUCE_BINARY_DIR}/JUCEConfigVersion.cmake"
 
 install(DIRECTORY "${JUCE_CMAKE_UTILS_DIR}/juce_vst3_helper"
         DESTINATION "${JUCE_INSTALL_DESTINATION}")
+
+_juce_install_prebuilt_modules("${JUCE_INSTALL_DESTINATION}")
 
 if(("${CMAKE_SOURCE_DIR}" STREQUAL "${JUCE_SOURCE_DIR}") AND (NOT JUCE_BUILD_HELPER_TOOLS))
     _juce_add_lv2_manifest_helper_target()

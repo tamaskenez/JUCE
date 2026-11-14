@@ -89,8 +89,34 @@ endif()
 unset(_targets_defined)
 unset(_targets_expected)
 
+# Modules built as static libraries by JUCE_PREBUILT_MODULES are imported, the rest are added
+# from source. The plain-name aliases let source modules depend on prebuilt ones.
+# JUCE_PREBUILT_MODULES remains set, the juce_add_* functions read it.
+set(JUCE_PREBUILT_MODULES "@JUCE_PREBUILT_MODULES@")
+
+if(JUCE_PREBUILT_MODULES)
+    include("${CMAKE_CURRENT_LIST_DIR}/JUCEPrebuiltTargets.cmake")
+
+    foreach(_juce_module IN LISTS JUCE_PREBUILT_MODULES)
+        add_library(${_juce_module} ALIAS juce::${_juce_module})
+
+        foreach(_juce_config IN ITEMS RELWITHDEBINFO MINSIZEREL)
+            get_target_property(_juce_mapped juce::${_juce_module} MAP_IMPORTED_CONFIG_${_juce_config})
+            if(NOT _juce_mapped)
+                set_target_properties(juce::${_juce_module} PROPERTIES
+                    MAP_IMPORTED_CONFIG_${_juce_config} Release)
+            endif()
+        endforeach()
+    endforeach()
+
+    unset(_juce_mapped)
+    unset(_juce_config)
+endif()
+
 foreach(_juce_module IN LISTS _juce_modules)
-    juce_add_module("@PACKAGE_JUCE_MODULE_PATH@/${_juce_module}" ALIAS_NAMESPACE juce)
+    if(NOT _juce_module IN_LIST JUCE_PREBUILT_MODULES)
+        juce_add_module("@PACKAGE_JUCE_MODULE_PATH@/${_juce_module}" ALIAS_NAMESPACE juce)
+    endif()
 endforeach()
 
 unset(_juce_modules)

@@ -51,6 +51,7 @@ set(JUCE_CMAKE_UTILS_DIR ${CMAKE_CURRENT_LIST_DIR}
 
 include("${JUCE_CMAKE_UTILS_DIR}/JUCEHelperTargets.cmake")
 include("${JUCE_CMAKE_UTILS_DIR}/JUCECheckAtomic.cmake")
+include("${JUCE_CMAKE_UTILS_DIR}/JUCEPrebuiltModules.cmake")
 
 # Tries to discover the target platform architecture, which is necessary for
 # naming VST3 bundle folders and including bundled libraries from modules
@@ -486,7 +487,11 @@ function(juce_add_module module_path)
         list(APPEND all_module_sources ${globbed_sources})
     endif()
 
-    _juce_add_interface_library(${module_name} ${all_module_sources})
+    if(module_name IN_LIST JUCE_PREBUILT_MODULES)
+        _juce_add_prebuilt_module_library(${module_name} ${all_module_sources})
+    else()
+        _juce_add_interface_library(${module_name} ${all_module_sources})
+    endif()
 
     set_property(GLOBAL APPEND PROPERTY _juce_module_names ${module_name})
 
@@ -662,7 +667,10 @@ function(juce_add_module module_path)
 
     _juce_add_module_staticlib_paths("${module_name}" "${module_path}")
 
-    if(JUCE_ARG_INSTALL_PATH)
+    if(module_name IN_LIST JUCE_PREBUILT_MODULES)
+        _juce_finalise_prebuilt_module(${module_name} "${module_path}/${module_header_name}"
+            "${base_path}" "${JUCE_ARG_INSTALL_PATH}")
+    elseif(JUCE_ARG_INSTALL_PATH)
         install(DIRECTORY "${module_path}" DESTINATION "${JUCE_ARG_INSTALL_PATH}")
     endif()
 
