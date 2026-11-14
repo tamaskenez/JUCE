@@ -68,6 +68,7 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 #include <iomanip>
 #include <ios>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -134,6 +135,10 @@ JUCE_END_IGNORE_WARNINGS_GCC_LIKE
 #include <juce_audio_processors_headless/format_types/juce_VST3Utilities.h>
 #include <juce_audio_processors_headless/utilities/juce_VST3Interface.h>
 #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
+#define JUCE_INTERNAL_VST3_INTERFACE_ONLY 1
+#include <juce_audio_processors_headless/utilities/juce_VST3ProjectClasses.cpp>
+#undef JUCE_INTERNAL_VST3_INTERFACE_ONLY
+
 #include "juce_VST3ModuleInfo.h"
 
 //==============================================================================

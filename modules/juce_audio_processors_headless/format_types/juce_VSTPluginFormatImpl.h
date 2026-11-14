@@ -85,9 +85,7 @@ JUCE_BEGIN_IGNORE_DEPRECATION_WARNINGS
 #define JUCE_VST_WRAPPER_INVOKE_MAIN  effect = module->moduleMain (audioMaster);
 #endif
 
-#ifndef JUCE_VST_FALLBACK_HOST_NAME
- #define JUCE_VST_FALLBACK_HOST_NAME "Juce VST Host"
-#endif
+#include <juce_audio_processors_headless/format_types/juce_VSTFallbackHostName.h>
 
 //==============================================================================
 namespace juce
@@ -2087,7 +2085,7 @@ private:
 
     static pointer_sized_int getHostName (char* name)
     {
-        String hostName (JUCE_VST_FALLBACK_HOST_NAME);
+        String hostName (detail::getVSTFallbackHostName());
 
         if (auto* app = JUCEApplicationBase::getInstance())
             hostName = app->getApplicationName();

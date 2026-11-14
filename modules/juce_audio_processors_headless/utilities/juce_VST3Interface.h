@@ -37,6 +37,14 @@
 namespace juce
 {
 
+namespace detail
+{
+    // Implemented in juce_VST3ProjectClasses.cpp, which is compiled in the consumer project when
+    // the module is prebuilt
+    std::optional<std::array<std::byte, 16>> getVST3ComponentClass();
+    std::optional<std::vector<std::array<std::byte, 16>>> getVST3CompatibleClasses();
+}
+
 /** Useful functions and classes for defining VST3 Interface Ids.
 
     The classes and functions in this struct are intentionally lightweight,
@@ -182,10 +190,9 @@ struct VST3Interface
                                    uint32_t pluginCode,
                                    Type interfaceType = Type::component)
     {
-       #ifdef JUCE_VST3_COMPONENT_CLASS
         if (interfaceType == Type::component)
-            return hexStringToId ( JUCE_VST3_COMPONENT_CLASS );
-       #endif
+            if (const auto componentClass = detail::getVST3ComponentClass())
+                return *componentClass;
 
         const auto word0 = std::invoke ([&]() -> uint32_t
         {

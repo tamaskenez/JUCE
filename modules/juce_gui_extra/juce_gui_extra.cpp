@@ -199,11 +199,14 @@
  #include "native/juce_XEmbedComponent_linux.cpp"
 
  #if JUCE_WEB_BROWSER
-  #if JUCE_USE_EXTERNAL_TEMPORARY_SUBPROCESS
-   #include "juce_LinuxSubprocessHelperBinaryData.h"
-  #endif
-
   #include "native/juce_WebBrowserComponent_linux.cpp"
+
+  // Compiled in the consumer project when the module is prebuilt, see JUCEPrebuiltModules.cmake
+  #if ! JUCE_INTERNAL_BUILDING_PREBUILT_MODULE
+   #define JUCE_INTERNAL_WEB_BROWSER_SUBPROCESS_IN_MODULE 1
+   #include "native/juce_WebBrowserSubprocess_linux.cpp"
+   #undef JUCE_INTERNAL_WEB_BROWSER_SUBPROCESS_IN_MODULE
+  #endif
  #endif
 
  JUCE_END_IGNORE_WARNINGS_GCC_LIKE

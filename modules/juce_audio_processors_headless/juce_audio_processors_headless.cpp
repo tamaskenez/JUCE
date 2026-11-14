@@ -71,3 +71,9 @@
 #include <juce_audio_processors_headless/format_types/juce_VSTPluginFormatHeadless.cpp>
 #include <juce_audio_processors_headless/format_types/juce_ARAHosting.cpp>
 #include <juce_audio_processors_headless/format/juce_AudioPluginFormatManager.cpp>
+
+// Compiled in the consumer project when the module is prebuilt, see JUCEPrebuiltModules.cmake
+#if ! JUCE_INTERNAL_BUILDING_PREBUILT_MODULE
+ #include <juce_audio_processors_headless/utilities/juce_VST3ProjectClasses.cpp>
+ #include <juce_audio_processors_headless/format_types/juce_VSTFallbackHostName.cpp>
+#endif

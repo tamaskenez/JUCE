@@ -63,22 +63,22 @@ namespace juce
 
 [[maybe_unused]] static std::vector<VST3Interface::Id> getAllVST3CompatibleClasses()
 {
-    return
+    std::vector<VST3Interface::Id> result
     {
        #if JUCE_VST3_CAN_REPLACE_VST2
         getVST3InterfaceId (VST3Interface::Type::component),
        #endif
-
-       #ifdef JUCE_VST3_COMPATIBLE_CLASSES
-        JUCE_VST3_COMPATIBLE_CLASSES
-       #endif
     };
+
+    if (const auto compatibleClasses = detail::getVST3CompatibleClasses())
+        result.insert (result.end(), compatibleClasses->begin(), compatibleClasses->end());
+
+    return result;
 }
 
 //==============================================================================
 // See https://steinbergmedia.github.io/vst3_dev_portal/pages/FAQ/Compatibility+with+VST+2.x+or+VST+1.html
 
-#ifdef JUCE_VST3_COMPATIBLE_CLASSES
 class JucePluginCompatibility final : public Steinberg::IPluginCompatibility
 {
 public:
@@ -142,7 +142,6 @@ public:
 private:
     std::atomic<int> refCount { 1 };
 };
-#endif // JUCE_VST3_COMPATIBLE_CLASSES
 
 //==============================================================================
 class JucePluginFactoryBase : public Steinberg::IPluginFactory3
@@ -312,11 +311,10 @@ protected:
 
     static ClassEntrySpan getClassEntries()
     {
+        // The compatibility class must stay the first entry, it's skipped when there are no compatible classes
         static const ClassEntry classEntries[]
         {
-           #ifdef JUCE_VST3_COMPATIBLE_CLASSES
             { VST3Interface::Type::compatibility, kPluginCompatibilityClass,    false },
-           #endif
             { VST3Interface::Type::component,     kVstAudioEffectClass,         true },
             { VST3Interface::Type::controller,    kVstComponentControllerClass, true },
            #if JucePlugin_Enable_ARA
@@ -324,17 +322,14 @@ protected:
            #endif
         };
 
-        return { classEntries, std::size (classEntries) };
+        static const size_t firstEntry = detail::getVST3CompatibleClasses().has_value() ? 0 : 1;
+        return { classEntries + firstEntry, std::size (classEntries) - firstEntry };
     }
 
     virtual Steinberg::FUnknown* createInstance (const ClassEntry& entry)
     {
-       #ifdef JUCE_VST3_COMPATIBLE_CLASSES
         if (doUIDsMatch (entry.info2.cid, JucePluginCompatibility::iid.toTUID()))
             return new JucePluginCompatibility();
-       #else
-        (void) entry;
-       #endif
 
         jassertfalse;
         return {};

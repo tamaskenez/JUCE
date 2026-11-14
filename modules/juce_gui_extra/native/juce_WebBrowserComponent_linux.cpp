@@ -40,6 +40,13 @@ struct WebKitURISchemeResponse;
 namespace juce
 {
 
+namespace detail
+{
+    // Implemented in juce_WebBrowserSubprocess_linux.cpp, which is compiled in the consumer project
+    // when the module is prebuilt
+    Span<const char> getEmbeddedLinuxSubprocessHelper();
+}
+
 //==============================================================================
 class WebKitSymbols final : public DeletedAtShutdown
 {
@@ -1685,13 +1692,14 @@ private:
 
         std::vector<String> arguments;
 
-       #if JUCE_USE_EXTERNAL_TEMPORARY_SUBPROCESS
-        if (! JUCEApplicationBase::isStandaloneApp())
+        const auto embeddedSubprocess = detail::getEmbeddedLinuxSubprocessHelper();
+
+        if (! embeddedSubprocess.empty() && ! JUCEApplicationBase::isStandaloneApp())
         {
             subprocessFile.emplace ("_juce_linux_subprocess");
 
-            const auto externalSubprocessAvailable = subprocessFile->getFile().replaceWithData (LinuxSubprocessHelperBinaryData::juce_linux_subprocess_helper,
-                                                                                                LinuxSubprocessHelperBinaryData::juce_linux_subprocess_helperSize)
+            const auto externalSubprocessAvailable = subprocessFile->getFile().replaceWithData (embeddedSubprocess.data(),
+                                                                                                embeddedSubprocess.size())
                                                      && subprocessFile->getFile().setExecutePermission (true);
 
             ignoreUnused (externalSubprocessAvailable);
@@ -1705,7 +1713,6 @@ private:
             arguments.emplace_back (File::getSpecialLocation (File::currentExecutableFile).getFullPathName());
             arguments.emplace_back ("juce_gtkWebkitMain");
         }
-       #endif
 
         arguments.emplace_back (File::getSpecialLocation (File::currentExecutableFile).getFullPathName());
         arguments.emplace_back ("--juce-gtkwebkitfork-child");
@@ -1732,18 +1739,18 @@ private:
             {
                 execv (arguments[0].toRawUTF8(), (char**) argv.data());
             }
+            else if (! embeddedSubprocess.empty())
+            {
+                execv (arguments[0].toRawUTF8(), (char**) argv.data());
+            }
             else
             {
-               #if JUCE_USE_EXTERNAL_TEMPORARY_SUBPROCESS
-                execv (arguments[0].toRawUTF8(), (char**) argv.data());
-               #else
                 // After a fork in a multithreaded program, the child can only safely call
                 // async-signal-safe functions until it calls execv, but if we reached this point
                 // then execv won't be called at all! The following call is unsafe, and is very
                 // likely to lead to unexpected behaviour.
                 jassertfalse;
                 juce_gtkWebkitMain ((int) arguments.size(), argv.data());
-               #endif
             }
 
             exit (0);
